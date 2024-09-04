@@ -3,8 +3,6 @@ from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
 from langchain_google_vertexai import VertexAIEmbeddings
 
-from uuid import uuid4
-
 from langchain_core.documents import Document
 
 embeddings = VertexAIEmbeddings(
@@ -90,8 +88,12 @@ vector_store = QdrantVectorStore(
 
 # vector_store.add_documents(documents=documents, ids=uuids)
 
-results = vector_store.similarity_search(
-    "LangChain provides abstractions to make working with LLMs easy", k=2
-)
-for res in results:
-    print(f"* {res.page_content} [{res.metadata}]")
+# results = vector_store.similarity_search(
+#     "LangChain provides abstractions to make working with LLMs easy", k=2
+# )
+# for res in results:
+#     print(f"* {res.page_content} [{res.metadata}]")
+
+docs = vector_store.scroll()
+for doc in docs:
+    print(doc)
