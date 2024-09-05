@@ -1,6 +1,6 @@
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
-# from qdrant_client.http.models import Distance, VectorParams
+from qdrant_client.http.models import Distance, VectorParams
 from langchain_google_vertexai import VertexAIEmbeddings
 from uuid import uuid4
 from langchain_core.documents import Document
@@ -11,14 +11,16 @@ embeddings = VertexAIEmbeddings(
 
 client = QdrantClient(path="/tmp/langchain_qdrant_test")
 
+collection_name = "test_collection_name"
+
 # client.create_collection(
-#     collection_name="test_collection",
+#     collection_name=collection_name,
 #     vectors_config=VectorParams(size=768, distance=Distance.COSINE),
 # )
 
 vector_store = QdrantVectorStore(
     client=client,
-    collection_name="test_collection",
+    collection_name=collection_name,
     embedding=embeddings,
 )
 
@@ -94,6 +96,17 @@ vector_store = QdrantVectorStore(
 # for res in results:
 #     print(f"* {res.page_content} [{res.metadata}]")
 
-docs = client.scroll(collection_name="test_collection")
-for doc in docs:
-    print(doc)
+# print("Getting all docs:")
+docs = client.scroll(collection_name="test_collection", with_vectors=True)
+first_record = docs[0][0]
+
+# 01730ac2-013a-4f61-bbfc-c0bfe50e25e4
+print(first_record.id) 
+
+# {'page_content': 'Robbers broke into the city bank and stole $1 million in cash.', 'metadata': {'source': 'news'}}
+print(first_record.payload)
+
+# print(first_record.vector)
+# docs = client.scroll(collection_name="test_collection")
+# for doc in docs:
+    # print(doc)
