@@ -1,8 +1,8 @@
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, VectorParams
+# from qdrant_client.http.models import Distance, VectorParams
 from langchain_google_vertexai import VertexAIEmbeddings
-
+from uuid import uuid4
 from langchain_core.documents import Document
 
 embeddings = VertexAIEmbeddings(
@@ -94,6 +94,6 @@ vector_store = QdrantVectorStore(
 # for res in results:
 #     print(f"* {res.page_content} [{res.metadata}]")
 
-docs = vector_store.scroll()
+docs = client.scroll(collection_name="test_collection")
 for doc in docs:
     print(doc)
