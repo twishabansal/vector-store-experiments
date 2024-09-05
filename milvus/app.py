@@ -1,6 +1,6 @@
 from langchain_milvus import Milvus
 from langchain_google_vertexai import VertexAIEmbeddings
-from uuid import uuid4
+import uuid
 
 from langchain_core.documents import Document
 
@@ -85,19 +85,29 @@ vector_store = Milvus(
 
 # vector_store.add_documents(documents=documents, ids=uuids)
 
-results = vector_store.similarity_search(
-    "LangChain provides abstractions to make working with LLMs easy",
-    k=2,
-    filter={"source": "tweet"},
-)
-for res in results:
-    print(f"* {res.page_content} [{res.metadata}]")
+# results = vector_store.similarity_search(
+#     "LangChain provides abstractions to make working with LLMs easy",
+#     k=2,
+#     filter={"source": "tweet"},
+# )
+# for res in results:
+#     print(f"* {res.page_content} [{res.metadata}]")
 
-vector_store_loaded = Milvus(
-    embeddings,
-    connection_args={"uri": URI},
-    collection_name="langchain_example",
-)
-for doc in vector_store_loaded:
-    print(doc)
+# vector_store_loaded = Milvus(
+#     embeddings,
+#     connection_args={"uri": URI},
+#     collection_name="langchain_example",
+# )
+# for doc in vector_store_loaded.load():
+#     print(doc)
 # print(vector_store_loaded)
+
+# TODO: Can we get all records without any filter?
+# Empty queries don't work
+
+# Filter Works
+all_ids = vector_store.get_pks(expr="source in ['news', 'tweet']")
+
+# Filter Works
+# all_ids = vector_store.get_pks(expr="source like '%weather%'")
+print(all_ids)
