@@ -32,6 +32,15 @@ chroma_client = chromadb.PersistentClient(path="db")
 
 collection = chroma_client.get_collection(name="my_collection3")
 
+# docs returns class GetResult
+# class GetResult(TypedDict):
+    # ids: List[ID]
+    # embeddings: Optional[List[Embedding]]
+    # documents: Optional[List[Document]]
+    # uris: Optional[URIs]
+    # data: Optional[Loadable]
+    # metadatas: Optional[List[Metadata]]
+    # included: Include
 docs = collection.get()
 for doc in docs:
     print(f"{doc}: {docs[doc]}")
