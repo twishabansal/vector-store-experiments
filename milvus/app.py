@@ -5,10 +5,13 @@ import uuid
 from langchain_core.documents import Document
 
 from langchain_milvus import Milvus
+from pymilvus import MilvusClient
+
 
 # The easiest way is to use Milvus Lite where everything is stored in a local file.
 # If you have a Milvus server you can use the server URI such as "http://localhost:19530".
 URI = "./milvus_example_collections.db"
+COLLECTION_NAME = "test_collection"
 
 embeddings = VertexAIEmbeddings(
     model_name="textembedding-gecko@003", project="twisha-dev"
@@ -17,8 +20,9 @@ embeddings = VertexAIEmbeddings(
 vector_store = Milvus(
     embedding_function=embeddings,
     connection_args={"uri": URI},
-    collection_name="test_collection",
+    collection_name=COLLECTION_NAME,
 )
+
 # document_1 = Document(
 #     page_content="I had chocalate chip pancakes and scrambled eggs for breakfast this morning.",
 #     metadata={"source": "tweet"},
@@ -106,8 +110,28 @@ vector_store = Milvus(
 # Empty queries don't work
 
 # Filter Works
-all_ids = vector_store.get_pks(expr="source in ['news', 'tweet']")
+# all_ids = vector_store.get_pks(expr="source in ['news', 'tweet']")
 
 # Filter Works
 # all_ids = vector_store.get_pks(expr="source like '%weather%'")
-print(all_ids)
+# print(all_ids)
+
+client = MilvusClient(
+    uri=URI
+)
+
+# res contains pk, source, text, vector
+# Cannot use empty filter
+res = client.query(
+    collection_name=COLLECTION_NAME,
+    filter='pk >= "0"', # Assuming this. All uuids fit into this. 
+)
+print(res[0].keys())
+
+# Gets all docs by ids
+# contains pk, source (metadata here), text, vector
+# res = client.get(
+#     collection_name=COLLECTION_NAME,
+#     ids=["05553c9a-0ed9-4c56-a655-86a103f3526d"]
+# )
+# print(res)
