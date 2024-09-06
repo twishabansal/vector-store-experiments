@@ -7,6 +7,7 @@ import asyncio
 from langchain_google_vertexai import VertexAIEmbeddings, VertexAI
 from pinecone import Pinecone, ServerlessSpec
 from langchain_pinecone import PineconeVectorStore
+# from pinecone.grpc import PineconeGRPC as Pinecone
 
 from uuid import uuid4
 
@@ -117,42 +118,70 @@ vector_store = PineconeVectorStore(index=index, embedding=embeddings)
 
 
 # Source: https://stackoverflow.com/questions/75894927/pinecone-can-i-get-all-dataall-vector-from-a-pinecone-index-to-move-data-i
-def get_ids_from_query(index,input_vector):
-  print("searching pinecone...")
-  results = index.query(
-    top_k=10000,
-    include_values=False,
-    include_metadata=False,
-    vector=input_vector,
-  )
-  ids = set()
-  for result in results['matches']:
+# def get_ids_from_query(index,input_vector):
+#   print("searching pinecone...")
+#   results = index.query(
+#     top_k=10000,
+#     include_values=False,
+#     include_metadata=False,
+#     vector=input_vector,
+#   )
+#   ids = set()
+#   for result in results['matches']:
 
-    ids.add(result.id)
-  return ids
+#     ids.add(result.id)
+#   return ids
 
-def get_all_ids_from_index(index, num_dimensions, namespace=""):
-  num_vectors = index.describe_index_stats()
-  num_vectors = num_vectors.namespaces[namespace].vector_count
-  all_ids = set()
-  while len(all_ids) < num_vectors:
-    print("Length of ids list is shorter than the number of total vectors...")
-    input_vector = np.random.rand(num_dimensions).tolist()
-    print("creating random vector...")
-    ids = get_ids_from_query(index,input_vector)
-    print("getting ids from a vector query...")
-    all_ids.update(ids)
-    print("updating ids set...")
-    print(f"Collected {len(all_ids)} ids out of {num_vectors}.")
-  return all_ids
+# def get_all_ids_from_index(index, num_dimensions, namespace=""):
+#   num_vectors = index.describe_index_stats()
+#   num_vectors = num_vectors.namespaces[namespace].vector_count
+#   all_ids = set()
+#   while len(all_ids) < num_vectors:
+#     print("Length of ids list is shorter than the number of total vectors...")
+#     input_vector = np.random.rand(num_dimensions).tolist()
+#     print("creating random vector...")
+#     ids = get_ids_from_query(index,input_vector)
+#     print("getting ids from a vector query...")
+#     all_ids.update(ids)
+#     print("updating ids set...")
+#     print(f"Collected {len(all_ids)} ids out of {num_vectors}.")
+#   return all_ids
 
 
-async def print_all_docs():
-    all_ids = get_all_ids_from_index(index, num_dimensions=768)
-    all_docs = await vector_store.aget_by_ids(all_ids)
-    print("Num all docs:", len(all_docs))
-    for doc in all_docs:
-        print(doc.page_content)
+# async def print_all_docs():
+#   all_ids = get_all_ids_from_index(index, num_dimensions=768)
+#   all_docs = await vector_store.aget_by_ids(all_ids)
+#   print("Num all docs:", len(all_docs))
+#   for doc in all_docs:
+#       print(doc.page_content)
 
-if __name__ == "__main__":
-    asyncio.run(print_all_docs())
+# if __name__ == "__main__":
+#     asyncio.run(print_all_docs())
+
+# all_ids = get_all_ids_from_index(index, num_dimensions=768)
+# all_docs = vector_store.get_by_ids(all_ids)
+# print("Num all docs:", len(all_docs))
+# for doc in all_docs:
+#     print(doc)
+
+
+# print(len(index.list()))
+# num_ids = 0
+# for ids in index.list():
+#     print(len(ids))
+    # num_ids+=1
+# print(num_ids)
+
+
+# Use all paginations: https://docs.pinecone.io/guides/data/list-record-ids#paginate-through-results
+results = index.list_paginated(
+    prefix=''
+)
+# print(results.namespace)
+ids = [v.id for v in results.vectors]
+# print(results.pagination)
+# print(results.usage)
+
+# Contains namespace, usage and vectors
+# Vectors contain uuid, id, metadata and text
+print(index.fetch([ids[0]]))
