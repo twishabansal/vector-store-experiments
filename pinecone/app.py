@@ -8,6 +8,7 @@ from langchain_google_alloydb_pg import (
     Column,
     AlloyDBVectorStore,
 )
+import asyncio
 
 from pinecone import Pinecone, ServerlessSpec
 from langchain_pinecone import PineconeVectorStore
@@ -29,19 +30,10 @@ if not os.getenv("PINECONE_API_KEY"):
 PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
 
 pc = Pinecone(api_key=PINECONE_API_KEY)
-INDEX_NAME = "test-index"  # change if desired
+INDEX_NAME = "test-pinecone"  # change if desired
 
 EMBEDDINGS_SERVICE = VertexAIEmbeddings(
     model_name="textembedding-gecko@003", project=PROJECT_ID
-)
-ENGINE = AlloyDBEngine.from_instance(
-    project_id=PROJECT_ID,
-    instance=INSTANCE_NAME,
-    region=REGION,
-    cluster=CLUSTER,
-    database=DATABASE,
-    user=USER,
-    password=PASSWORD,
 )
 
 
@@ -153,8 +145,7 @@ def get_all_pinecone_data(index):
         pagination_token = results.pagination.next
         results = index.list_paginated(prefix="", pagination_token=pagination_token)
         ids.extend([v.id for v in results.vectors])
-    # Contains namespace, usage and vectors
-    # Vectors contain uuid, id, metadata and tex
+
     all_data = index.fetch(ids)
     ids = []
     embeddings = []
@@ -170,20 +161,29 @@ def get_all_pinecone_data(index):
     return ids, embeddings, content, metadatas
 
 
-def migrate_pinecone(pinecone_index):
-    ENGINE.init_vectorstore_table(
+async def migrate_pinecone(pinecone_index):
+    engine = await AlloyDBEngine.afrom_instance(
+        project_id=PROJECT_ID,
+        instance=INSTANCE_NAME,
+        region=REGION,
+        cluster=CLUSTER,
+        database=DATABASE,
+        user=USER,
+        password=PASSWORD,
+    )
+    await engine.ainit_vectorstore_table(
         table_name=INDEX_NAME,
         vector_size=768,
         metadata_columns=[Column("source", "VARCHAR"), Column("location", "VARCHAR")],
     )
-    vector_store = AlloyDBVectorStore.create_sync(
-        engine=ENGINE,
+    vector_store = await AlloyDBVectorStore.create(
+        engine=engine,
         embedding_service=EMBEDDINGS_SERVICE,
         table_name=INDEX_NAME,
         metadata_columns=["source", "location"],
     )
     ids, embeddings, content, metadatas = get_all_pinecone_data(pinecone_index)
-    vector_store.add_embeddings(
+    await vector_store.aadd_embeddings(
         texts=content,
         embeddings=embeddings,
         metadatas=metadatas,
@@ -192,8 +192,7 @@ def migrate_pinecone(pinecone_index):
 
 
 if __name__ == "__main__":
-    # index = create_pinecone_index()
-    # populate_pinecone_index(index)
-    # data = get_all_pinecone_data(index)
-    index = get_pinecone_index()
-    migrate_pinecone(index)
+    index = create_pinecone_index()
+    populate_pinecone_index(index)
+    # index = get_pinecone_index()
+    asyncio.run(migrate_pinecone(index))
