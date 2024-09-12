@@ -1,137 +1,162 @@
-from langchain_milvus import Milvus
-from langchain_google_vertexai import VertexAIEmbeddings
-import uuid
+import asyncio
+import os
+from uuid import uuid4
 
 from langchain_core.documents import Document
-
+from langchain_google_alloydb_pg import (AlloyDBEngine, AlloyDBVectorStore,
+                                         Column)
+from langchain_google_vertexai import VertexAIEmbeddings
 from langchain_milvus import Milvus
 from pymilvus import MilvusClient
 
+PROJECT_ID = os.getenv("PROJECT_ID")
+INSTANCE_NAME = os.getenv("INSTANCE_NAME")
+REGION = os.getenv("REGION")
+CLUSTER = os.getenv("CLUSTER")
+DATABASE = os.getenv("DATABASE")
+USER = os.getenv("USER")
+PASSWORD = os.getenv("PASSWORD")
 
-# The easiest way is to use Milvus Lite where everything is stored in a local file.
-# If you have a Milvus server you can use the server URI such as "http://localhost:19530".
 URI = "./milvus_example_collections.db"
 COLLECTION_NAME = "test_collection"
 
-embeddings = VertexAIEmbeddings(
+EMBEDDINGS_SERVICE = VertexAIEmbeddings(
     model_name="textembedding-gecko@003", project="twisha-dev"
 )
 
-vector_store = Milvus(
-    embedding_function=embeddings,
-    connection_args={"uri": URI},
-    collection_name=COLLECTION_NAME,
-)
 
-# document_1 = Document(
-#     page_content="I had chocalate chip pancakes and scrambled eggs for breakfast this morning.",
-#     metadata={"source": "tweet"},
-# )
+def create_milvus_vectorstore():
+    vector_store = Milvus(
+        embedding_function=EMBEDDINGS_SERVICE,
+        connection_args={"uri": URI},
+        collection_name=COLLECTION_NAME,
+    )
+    document_1 = Document(
+        page_content="I had chocalate chip pancakes and scrambled eggs for breakfast this morning.",
+        metadata={"source": "tweet", "location": "l1"},
+    )
 
-# document_2 = Document(
-#     page_content="The weather forecast for tomorrow is cloudy and overcast, with a high of 62 degrees.",
-#     metadata={"source": "news"},
-# )
+    document_2 = Document(
+        page_content="The weather forecast for tomorrow is cloudy and overcast, with a high of 62 degrees.",
+        metadata={"source": "news", "location": "l2"},
+    )
 
-# document_3 = Document(
-#     page_content="Building an exciting new project with LangChain - come check it out!",
-#     metadata={"source": "tweet"},
-# )
+    document_3 = Document(
+        page_content="Building an exciting new project with LangChain - come check it out!",
+        metadata={"source": "tweet", "location": "l2"},
+    )
 
-# document_4 = Document(
-#     page_content="Robbers broke into the city bank and stole $1 million in cash.",
-#     metadata={"source": "news"},
-# )
+    document_4 = Document(
+        page_content="Robbers broke into the city bank and stole $1 million in cash.",
+        metadata={"source": "news", "location": "l1"},
+    )
 
-# document_5 = Document(
-#     page_content="Wow! That was an amazing movie. I can't wait to see it again.",
-#     metadata={"source": "tweet"},
-# )
+    document_5 = Document(
+        page_content="Wow! That was an amazing movie. I can't wait to see it again.",
+        metadata={"source": "tweet", "location": "l1"},
+    )
 
-# document_6 = Document(
-#     page_content="Is the new iPhone worth the price? Read this review to find out.",
-#     metadata={"source": "website"},
-# )
+    document_6 = Document(
+        page_content="Is the new iPhone worth the price? Read this review to find out.",
+        metadata={"source": "website", "location": "l2"},
+    )
 
-# document_7 = Document(
-#     page_content="The top 10 soccer players in the world right now.",
-#     metadata={"source": "website"},
-# )
+    document_7 = Document(
+        page_content="The top 10 soccer players in the world right now.",
+        metadata={"source": "website", "location": "l1"},
+    )
 
-# document_8 = Document(
-#     page_content="LangGraph is the best framework for building stateful, agentic applications!",
-#     metadata={"source": "tweet"},
-# )
+    document_8 = Document(
+        page_content="LangGraph is the best framework for building stateful, agentic applications!",
+        metadata={"source": "tweet", "location": "l2"},
+    )
 
-# document_9 = Document(
-#     page_content="The stock market is down 500 points today due to fears of a recession.",
-#     metadata={"source": "news"},
-# )
+    document_9 = Document(
+        page_content="The stock market is down 500 points today due to fears of a recession.",
+        metadata={"source": "news", "location": "l3"},
+    )
 
-# document_10 = Document(
-#     page_content="I have a bad feeling I am going to get deleted :(",
-#     metadata={"source": "tweet"},
-# )
+    document_10 = Document(
+        page_content="I have a bad feeling I am going to get deleted :(",
+        metadata={"source": "tweet", "location": "l3"},
+    )
 
-# documents = [
-#     document_1,
-#     document_2,
-#     document_3,
-#     document_4,
-#     document_5,
-#     document_6,
-#     document_7,
-#     document_8,
-#     document_9,
-#     document_10,
-# ]
-# uuids = [str(uuid4()) for _ in range(len(documents))]
+    documents = [
+        document_1,
+        document_2,
+        document_3,
+        document_4,
+        document_5,
+        document_6,
+        document_7,
+        document_8,
+        document_9,
+        document_10,
+    ]
+    uuids = [str(uuid4()) for _ in range(len(documents))]
 
-# vector_store.add_documents(documents=documents, ids=uuids)
+    vector_store.add_documents(documents=documents, ids=uuids)
 
-# results = vector_store.similarity_search(
-#     "LangChain provides abstractions to make working with LLMs easy",
-#     k=2,
-#     filter={"source": "tweet"},
-# )
-# for res in results:
-#     print(f"* {res.page_content} [{res.metadata}]")
+    results = vector_store.similarity_search(
+        "LangChain provides abstractions to make working with LLMs easy", k=2
+    )
+    for res in results:
+        print(f"* {res.page_content} [{res.metadata}]")
 
-# vector_store_loaded = Milvus(
-#     embeddings,
-#     connection_args={"uri": URI},
-#     collection_name="langchain_example",
-# )
-# for doc in vector_store_loaded.load():
-#     print(doc)
-# print(vector_store_loaded)
 
-# TODO: Can we get all records without any filter?
-# Empty queries don't work
+def get_all_data():
+    client = MilvusClient(uri=URI)
+    all_docs = client.query(
+        collection_name=COLLECTION_NAME,
+        filter='pk >= "0"',
+        output_fields=["pk", "source", "location", "text", "vector"],
+    )
+    ids = []
+    content = []
+    embeddings = []
+    metadatas = []
+    for doc in all_docs:
+        ids.append(doc["pk"])
+        content.append(doc["text"])
+        embeddings.append(doc["vector"])
+        del doc["pk"]
+        del doc["text"]
+        del doc["vector"]
+        metadatas.append(doc)
+    return ids, content, embeddings, metadatas
 
-# Filter Works
-# all_ids = vector_store.get_pks(expr="source in ['news', 'tweet']")
 
-# Filter Works
-# all_ids = vector_store.get_pks(expr="source like '%weather%'")
-# print(all_ids)
+async def migrate_milvus():
+    engine = await AlloyDBEngine.afrom_instance(
+        project_id=PROJECT_ID,
+        instance=INSTANCE_NAME,
+        region=REGION,
+        cluster=CLUSTER,
+        database=DATABASE,
+        user=USER,
+        password=PASSWORD,
+    )
+    await engine.ainit_vectorstore_table(
+        table_name=COLLECTION_NAME,
+        vector_size=768,
+        metadata_columns=[Column("source", "VARCHAR"), Column("location", "VARCHAR")],
+    )
+    vector_store = await AlloyDBVectorStore.create(
+        engine=engine,
+        embedding_service=EMBEDDINGS_SERVICE,
+        table_name=COLLECTION_NAME,
+        metadata_columns=["source", "location"],
+    )
+    ids, content, embeddings, metadatas = get_all_data()
+    await vector_store.aadd_embeddings(
+        texts=content,
+        embeddings=embeddings,
+        metadatas=metadatas,
+        ids=ids,
+    )
 
-client = MilvusClient(
-    uri=URI
-)
 
-# res contains pk, source, text, vector
-# Cannot use empty filter
-res = client.query(
-    collection_name=COLLECTION_NAME,
-    filter='pk >= "0"', # Assuming this. All uuids fit into this. 
-)
-print(res[0].keys())
-
-# Gets all docs by ids
-# contains pk, source (metadata here), text, vector
-# res = client.get(
-#     collection_name=COLLECTION_NAME,
-#     ids=["05553c9a-0ed9-4c56-a655-86a103f3526d"]
-# )
-# print(res)
+if __name__ == "__main__":
+    # create_milvus_vectorstore()
+    # ids, content, embeddings, metadatas = get_all_data()
+    asyncio.run(migrate_milvus())
