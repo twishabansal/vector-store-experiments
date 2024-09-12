@@ -1,0 +1,5 @@
+protobuf
+weaviate-client
+langchain_core
+langchain_cohere
+langchain_google_alloydb_pg
