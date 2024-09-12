@@ -7,6 +7,7 @@ from langchain_google_alloydb_pg import (
     AlloyDBEngine,
     Column,
     AlloyDBVectorStore,
+    AlloyDBLoader
 )
 import asyncio
 
@@ -30,7 +31,7 @@ if not os.getenv("PINECONE_API_KEY"):
 PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
 
 pc = Pinecone(api_key=PINECONE_API_KEY)
-INDEX_NAME = "test-pinecone"  # change if desired
+INDEX_NAME = "test-pinecone-1"  # change if desired
 
 EMBEDDINGS_SERVICE = VertexAIEmbeddings(
     model_name="textembedding-gecko@003", project=PROJECT_ID
@@ -127,26 +128,28 @@ def populate_pinecone_index(index):
 
     vector_store.add_documents(documents=documents, ids=uuids)
 
-    results = vector_store.similarity_search(
-        "LangChain provides abstractions to make working with LLMs easy",
-        k=2,
-        filter={"source": "tweet"},
-    )
-    print("Num results found: ", len(results))
-    for res in results:
-        print(f"* {res.page_content} [{res.metadata}]")
-
+    # results = vector_store.similarity_search(
+    #     "LangChain provides abstractions to make working with LLMs easy",
+    #     k=2,
+    #     filter={"source": "tweet"},
+    # )
+    # print("Num results found: ", len(results))
+    # for res in results:
+    #     print(f"* {res.page_content} [{res.metadata}]")
 
 # Source: https://docs.pinecone.io/guides/data/list-record-ids#paginate-through-results
-def get_all_pinecone_data(index):
+def get_all_pinecone_ids(index):
     results = index.list_paginated(prefix="")
     ids = [v.id for v in results.vectors]
     while results.pagination is not None:
         pagination_token = results.pagination.next
         results = index.list_paginated(prefix="", pagination_token=pagination_token)
         ids.extend([v.id for v in results.vectors])
+    return ids
 
-    all_data = index.fetch(ids)
+
+def get_all_pinecone_data(index):
+    all_data = index.fetch(ids=get_all_pinecone_ids(index))
     ids = []
     embeddings = []
     content = []
@@ -161,7 +164,14 @@ def get_all_pinecone_data(index):
     return ids, embeddings, content, metadatas
 
 
+def delete_pinecone_data(index):
+    ids = get_all_pinecone_ids(index)
+    index.delete(ids=ids)
+    ids = get_all_pinecone_ids(index)
+    assert len(ids) == 0
+
 async def migrate_pinecone(pinecone_index):
+    # Create engine
     engine = await AlloyDBEngine.afrom_instance(
         project_id=PROJECT_ID,
         instance=INSTANCE_NAME,
@@ -171,6 +181,8 @@ async def migrate_pinecone(pinecone_index):
         user=USER,
         password=PASSWORD,
     )
+
+    # Create AlloyDB table
     await engine.ainit_vectorstore_table(
         table_name=INDEX_NAME,
         vector_size=768,
@@ -182,6 +194,8 @@ async def migrate_pinecone(pinecone_index):
         table_name=INDEX_NAME,
         metadata_columns=["source", "location"],
     )
+
+    # Get all Pinecone data and copy to AlloyDB
     ids, embeddings, content, metadatas = get_all_pinecone_data(pinecone_index)
     await vector_store.aadd_embeddings(
         texts=content,
@@ -189,10 +203,22 @@ async def migrate_pinecone(pinecone_index):
         metadatas=metadatas,
         ids=ids,
     )
+    
+    # Validate that all the data has been copied
+    loader = await AlloyDBLoader.create(
+        engine=engine,
+        query=f"SELECT * FROM {INDEX_NAME};",
+        content_columns="content",
+        metadata_columns=["source", "location"]
+    )
+    documents = loader.load()
+    assert len(documents) == len(ids)
+
+    # Delete data from pinecone index
+    delete_pinecone_data(index)
 
 
 if __name__ == "__main__":
-    index = create_pinecone_index()
-    populate_pinecone_index(index)
-    # index = get_pinecone_index()
+    index = get_pinecone_index()
     asyncio.run(migrate_pinecone(index))
+    delete_pinecone_data(index)
